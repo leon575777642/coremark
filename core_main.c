@@ -358,11 +358,14 @@ for (i = 0; i < MULTITHREAD; i++)
     ee_printf("CoreMark Size    : %lu\n", (long unsigned)results[0].size);
     ee_printf("Total ticks      : %lu\n", (long unsigned)total_time);
 #if HAS_FLOAT
-    ee_printf("Total time (secs): %f\n", time_in_secs(total_time));
-    if (time_in_secs(total_time) > 0)
-        ee_printf("Iterations/Sec   : %f\n",
-                  default_num_contexts * results[0].iterations
-                      / time_in_secs(total_time));
+    double secs = time_in_secs (total_time);
+    ee_printf("Total time (secs): fp(0x%016llx)\n", *((uint64_t*)(&secs)));
+    if (time_in_secs(total_time) > 0) {
+        double ips = default_num_contexts * results[0].iterations
+                      / time_in_secs(total_time);
+        ee_printf("Iterations/Sec   : fp(0x%016llx)\n",
+                *((uint64_t*)(&ips)));
+    }
 #else
     ee_printf("Total time (secs): %d\n", time_in_secs(total_time));
     if (time_in_secs(total_time) > 0)
@@ -406,11 +409,9 @@ for (i = 0; i < MULTITHREAD; i++)
 #if HAS_FLOAT
         if (known_id == 3)
         {
-            ee_printf("CoreMark 1.0 : %f / %s %s",
-                      default_num_contexts * results[0].iterations
-                          / time_in_secs(total_time),
-                      COMPILER_VERSION,
-                      COMPILER_FLAGS);
+            double score = default_num_contexts * results[0].iterations
+                / time_in_secs(total_time);
+            ee_printf("CoreMark 1.0 : fp(0x%016llx)", *((uint64_t*)(&score)));
 #if defined(MEM_LOCATION) && !defined(MEM_LOCATION_UNSPEC)
             ee_printf(" / %s", MEM_LOCATION);
 #else
