@@ -33,6 +33,9 @@ Original Author: Shay Gal-on
         Returns:
         NULL.
 */
+
+#include "cifer-common.h"
+
 static ee_u16 list_known_crc[]   = { (ee_u16)0xd4b0,
                                    (ee_u16)0x3340,
                                    (ee_u16)0x6a79,
@@ -51,24 +54,47 @@ static ee_u16 state_known_crc[]  = { (ee_u16)0x5e47,
 void *
 iterate(void *pres)
 {
-    ee_u32        i;
-    ee_u16        crc;
-    core_results *res        = (core_results *)pres;
-    ee_u32        iterations = res->iterations;
-    res->crc                 = 0;
-    res->crclist             = 0;
-    res->crcmatrix           = 0;
-    res->crcstate            = 0;
+    /** ORIGINAL IMPLEMENTATION */
 
-    for (i = 0; i < iterations; i++)
-    {
-        crc      = core_bench_list(res, 1);
-        res->crc = crcu16(crc, res->crc);
-        crc      = core_bench_list(res, -1);
-        res->crc = crcu16(crc, res->crc);
-        if (i == 0)
-            res->crclist = res->crc;
+    // ee_u32        i;
+    // ee_u16        crc;
+    // core_results *res        = (core_results *)pres;
+    // ee_u32        iterations = res->iterations;
+    // res->crc                 = 0;
+    // res->crclist             = 0;
+    // res->crcmatrix           = 0;
+    // res->crcstate            = 0;
+
+    // for (i = 0; i < iterations; i++)
+    // {
+    //     crc      = core_bench_list(res, 1);
+    //     res->crc = crcu16(crc, res->crc);
+    //     crc      = core_bench_list(res, -1);
+    //     res->crc = crcu16(crc, res->crc);
+    //     if (i == 0)
+    //         res->crclist = res->crc;
+    // }
+    // return NULL;
+
+    /** Host code running on Ariane core */
+    ee_printf("Launching iterate() kernel on tiny core ...\n");
+
+    // start ROI
+    mark(1024);
+
+    // wake up one BRG tile
+    wakeup_brg_tile(0, 2);
+
+    // wait for the BRG tile to finish
+    int ret = wait_brg_tile(0, 2);
+    if (ret != 0) {
+      printf("[FAILED] tile (0, 2)\n");
+      return NULL;
     }
+
+    // end ROI
+    mark(1025);
+
     return NULL;
 }
 
@@ -104,6 +130,9 @@ char *mem_name[3] = { "Static", "Heap", "Stack" };
 
 */
 
+// @Tuan: global variable shared with kernel
+core_results results[MULTITHREAD];
+
 #if MAIN_HAS_NOARGC
 MAIN_RETURN_TYPE
 main(void)
@@ -119,7 +148,10 @@ main(int argc, char *argv[])
     ee_s16       known_id = -1, total_errors = 0;
     ee_u16       seedcrc = 0;
     CORE_TICKS   total_time;
-    core_results results[MULTITHREAD];
+
+    // @Tuan: replace this with the global variable
+    //core_results results[MULTITHREAD];
+
 #if (MEM_METHOD == MEM_STACK)
     ee_u8 stack_memblock[TOTAL_DATA_SIZE * MULTITHREAD];
 #endif
@@ -263,6 +295,7 @@ for (i = 0; i < MULTITHREAD; i++)
     }
     /* perform actual benchmark */
     start_time();
+
 #if (MULTITHREAD > 1)
     if (default_num_contexts > MULTITHREAD)
     {
@@ -281,8 +314,10 @@ for (i = 0; i < MULTITHREAD; i++)
 #else
     iterate(&results[0]);
 #endif
+
     stop_time();
     total_time = get_time();
+
     /* get a function of the input to report */
     seedcrc = crc16(results[0].seed1, seedcrc);
     seedcrc = crc16(results[0].seed2, seedcrc);
