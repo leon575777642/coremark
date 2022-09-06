@@ -30,7 +30,7 @@ Original Author: Shay Gal-on
         Define to 1 if the platform supports floating point.
 */
 #ifndef HAS_FLOAT
-#define HAS_FLOAT 1
+#define HAS_FLOAT 0
 #endif
 /* Configuration: HAS_TIME_H
         Define to 1 if platform has the time.h header file,
@@ -65,19 +65,19 @@ Original Author: Shay Gal-on
 /* Configuration: CORE_TICKS
         Define type of return from the timing functions.
  */
-#if defined(_MSC_VER)
-#include <windows.h>
-typedef size_t CORE_TICKS;
-#elif HAS_TIME_H
-#include <time.h>
-typedef clock_t CORE_TICKS;
-#else
-typedef unsigned long CORE_TICKS;
-void        start_time();
-void        stop_time();
-CORE_TICKS  get_time();
-double      time_in_secs(CORE_TICKS t);
-#endif
+//#if defined(_MSC_VER)
+//#include <windows.h>
+//typedef size_t CORE_TICKS;
+//#elif HAS_TIME_H
+//#include <time.h>
+//typedef clock_t CORE_TICKS;
+//#else
+//typedef unsigned long CORE_TICKS;
+//void        start_time();
+//void        stop_time();
+//CORE_TICKS  get_time();
+//double      time_in_secs(CORE_TICKS t);
+//#endif
 
 /* Definitions: COMPILER_VERSION, COMPILER_FLAGS, MEM_LOCATION
         Initialize these strings per platform
@@ -96,7 +96,7 @@ double      time_in_secs(CORE_TICKS t);
     FLAGS_STR /* "Please put compiler flags here (e.g. -o3)" */
 #endif
 #ifndef MEM_LOCATION
-#define MEM_LOCATION "stack"
+#define MEM_LOCATION "static"
 #define MEM_LOCATION_UNSPEC 1
 #endif
 
@@ -129,7 +129,7 @@ typedef uint64_t        ee_size_t;
         SEED_VOLATILE - from volatile variables.
 */
 #ifndef SEED_METHOD
-#define SEED_METHOD SEED_ARG
+#define SEED_METHOD SEED_VOLATILE
 #endif
 
 /* Configuration: MEM_METHOD
@@ -254,19 +254,20 @@ typedef struct CORE_PORTABLE_S
     ee_u8 portable_id;
 } core_portable;
 
-/* target specific init/fini */
-void portable_init(core_portable *p, int *argc, char *argv[]);
-void portable_fini(core_portable *p);
+///* target specific init/fini */
+//void portable_init(core_portable *p, int *argc, char *argv[]);
+//void portable_fini(core_portable *p);
 
 #if (SEED_METHOD == SEED_VOLATILE)
 #if (VALIDATION_RUN || PERFORMANCE_RUN || PROFILE_RUN)
 #define RUN_TYPE_FLAG 1
 #else
-#if (TOTAL_DATA_SIZE == 1200)
-#define PROFILE_RUN 1
-#else
+//#if (TOTAL_DATA_SIZE == 1200)
+//#define PROFILE_RUN 1
+//#else
+//#define PERFORMANCE_RUN 1
+//#endif
 #define PERFORMANCE_RUN 1
-#endif
 #endif
 #endif /* SEED_METHOD==SEED_VOLATILE */
 

@@ -100,9 +100,17 @@ inline static int wait_brg_tile(uint8_t tile_x, uint8_t tile_y) {
     if (N < 256) N *= 2;
   }
 
-  if (brg_status != BRG_STATUS_SUCCESS)
+  if (brg_status != BRG_STATUS_SUCCESS) {
+#ifdef DEBUG_PRINT
+    printf("brg_status=%u\n", (uint32_t) brg_status);
+#endif
     return 1;
-  return 0;
+  } else {
+#ifdef DEBUG_PRINT
+    printf("BRG_STATUS_SUCCESS\n");
+#endif
+    return 0;
+  }
 }
 #endif
 
