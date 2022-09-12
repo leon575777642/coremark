@@ -45,41 +45,47 @@ int main(int argc, char** argv) {
 
   printf("Hello from Ariane core %d\n", rv64_thread_id);
 
-  /** Init data */
-  printf("Initializing data using BRG tile (0,2) ...\n");
+  ///** Init data */
+  //printf("Initializing data using BRG tile (0,2) ...\n");
 
-  // wake up the tile
-  wakeup_brg_tile(0, 2);
+  //// wake up the tile
+  //wakeup_brg_tile(0, 2);
 
-  // wait for BRG tile to finish
-  int ret = 0;
-  ret = wait_brg_tile(0, 2);
-  if (ret != 0) {
-    printf("[FAILED] tile (0, 2)\n");
-    return ret;
-  }
-
-  printf("Finished intializing data\n");
-  printf("results[0].seed1=%x\n", results[0].seed1);
-  printf("results[0].seed2=%x\n", results[0].seed2);
-  printf("results[0].seed3=%x\n", results[0].seed3);
-  printf("results[0].memblock=%x\n", ((uint32_t*)results[0].memblock)[0]);
-  printf("results[0].size=%u\n", results[0].size);
-  printf("results[0].iterations=%u\n", results[0].iterations);
+  //// wait for BRG tile to finish
+  //int ret = 0;
+  //ret = wait_brg_tile(0, 2);
+  //if (ret != 0) {
+  //  printf("[FAILED] tile (0, 2)\n");
+  //  return ret;
+  //}
 
   /** ROI */
-  printf("Executing kernel using BRG tile (0,3) ...\n");
+  printf("Executing kernel using all BRG tiles ...\n");
 
   // start measuring time
   start_time();
 
   // wake up the tile
+  wakeup_brg_tile(0, 2);
   wakeup_brg_tile(0, 3);
+  wakeup_brg_tile(1, 3);
 
   // wait for BRG tile to finish
+  int ret = wait_brg_tile(0, 2);
+  if (ret != 0) {
+    printf("[FAILED] tile (0, 2)\n");
+    return ret;
+  }
+
   ret = wait_brg_tile(0, 3);
   if (ret != 0) {
     printf("[FAILED] tile (0, 3)\n");
+    return ret;
+  }
+
+  ret = wait_brg_tile(1, 3);
+  if (ret != 0) {
+    printf("[FAILED] tile (1, 3)\n");
     return ret;
   }
 
@@ -95,7 +101,16 @@ int main(int argc, char** argv) {
   ee_u16 seedcrc = *seedcrc_ptr;
   ee_s16 known_id = -1, total_errors = 0;
   ee_u16 i, j = 0;
-  ee_u32 default_num_contexts = 1;
+  ee_u32 default_num_contexts = 18;
+
+  for (int i = 0; i < default_num_contexts; ++i) {
+    printf("results[%d].seed1=%x\n", i, results[i].seed1);
+    printf("results[%d].seed2=%x\n", i, results[i].seed2);
+    printf("results[%d].seed3=%x\n", i, results[i].seed3);
+    printf("results[%d].memblock=%x\n", i, ((uint32_t*)results[i].memblock)[0]);
+    printf("results[%d].size=%u\n", i, results[i].size);
+    printf("results[%d].iterations=%u\n", i, results[i].iterations);
+  }
 
   seedcrc = crc16(results[0].seed1, seedcrc);
   seedcrc = crc16(results[0].seed2, seedcrc);

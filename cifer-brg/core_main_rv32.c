@@ -52,6 +52,8 @@ static ee_u16 state_known_crc[]  = { (ee_u16)0x5e47,
                                      (ee_u16)0x8e3a,
                                      (ee_u16)0x8d84 };
 
+#define MULTITHREAD 18
+
 // results
 core_results results[MULTITHREAD];
 
@@ -65,23 +67,21 @@ ee_s32 get_seed_32(int i);
 #endif
 
 // static_memblk
-ee_u8 static_memblk[TOTAL_DATA_SIZE];
+ee_u8 static_memblk[TOTAL_DATA_SIZE * MULTITHREAD];
 
 char *mem_name[3] = { "Static", "Heap", "Stack" };
 
 // other variables
-ee_u16 num_algorithms = 0;
-ee_u16 seedcrc = 0;
-
 //=========================================================================
 // init_data()
 //=========================================================================
 // Initialize data
 
 void
-init_data(int argc, char *argv[])
+init_data(int cid, int argc, char *argv[])
 {
     ee_u16 i, j = 0;
+    ee_u16 num_algorithms = 0;
 
     ///* first call any initializations needed */
     //portable_init(&(results[0].port), &argc, argv);
@@ -93,88 +93,81 @@ init_data(int argc, char *argv[])
     //    return MAIN_RETURN_VAL;
     //}
 
-    results[0].seed1      = get_seed(1);
-    results[0].seed2      = get_seed(2);
-    results[0].seed3      = get_seed(3);
-    results[0].iterations = get_seed_32(4);
+    results[cid].seed1      = get_seed(1);
+    results[cid].seed2      = get_seed(2);
+    results[cid].seed3      = get_seed(3);
+    results[cid].iterations = get_seed_32(4);
 #if CORE_DEBUG
-    results[0].iterations = 1;
+    results[cid].iterations = 1;
 #endif
-    results[0].execs = get_seed_32(5);
+    results[cid].execs = get_seed_32(5);
 
-    if (results[0].execs == 0)
+    if (results[cid].execs == 0)
     { /* if not supplied, execute all algorithms */
-        results[0].execs = ALL_ALGORITHMS_MASK;
+        results[cid].execs = ALL_ALGORITHMS_MASK;
     }
 
     /* put in some default values based on one seed only for easy testing */
-    if ((results[0].seed1 == 0) && (results[0].seed2 == 0)
-        && (results[0].seed3 == 0))
+    if ((results[cid].seed1 == 0) && (results[cid].seed2 == 0)
+        && (results[cid].seed3 == 0))
     { /* performance run */
-        results[0].seed1 = 0;
-        results[0].seed2 = 0;
-        results[0].seed3 = 0x66;
+        results[cid].seed1 = 0;
+        results[cid].seed2 = 0;
+        results[cid].seed3 = 0x66;
     }
 
-    if ((results[0].seed1 == 1) && (results[0].seed2 == 0)
-        && (results[0].seed3 == 0))
+    if ((results[cid].seed1 == 1) && (results[cid].seed2 == 0)
+        && (results[cid].seed3 == 0))
     { /* validation run */
-        results[0].seed1 = 0x3415;
-        results[0].seed2 = 0x3415;
-        results[0].seed3 = 0x66;
+        results[cid].seed1 = 0x3415;
+        results[cid].seed2 = 0x3415;
+        results[cid].seed3 = 0x66;
     }
 
-    results[0].memblock[0] = (void *)static_memblk;
-    results[0].size        = TOTAL_DATA_SIZE;
-    results[0].err         = 0;
+    results[cid].memblock[0] = (void *)static_memblk + cid * TOTAL_DATA_SIZE;
+    results[cid].size        = TOTAL_DATA_SIZE;
+    results[cid].err         = 0;
 
     /* Data init */
     /* Find out how space much we have based on number of algorithms */
     for (i = 0; i < NUM_ALGORITHMS; i++)
     {
-        if ((1 << (ee_u32)i) & results[0].execs)
+        if ((1 << (ee_u32)i) & results[cid].execs)
             num_algorithms++;
     }
 
-    for (i = 0; i < MULTITHREAD; i++)
-        results[i].size = results[i].size / num_algorithms;
+    results[cid].size = results[cid].size / num_algorithms;
 
     /* Assign pointers */
     for (i = 0; i < NUM_ALGORITHMS; i++)
     {
-        ee_u32 ctx;
-        if ((1 << (ee_u32)i) & results[0].execs)
+        if ((1 << (ee_u32)i) & results[cid].execs)
         {
-            for (ctx = 0; ctx < MULTITHREAD; ctx++)
-                results[ctx].memblock[i + 1]
-                    = (char *)(results[ctx].memblock[0]) + results[0].size * j;
+            results[cid].memblock[i + 1]
+                = (char *)(results[cid].memblock[0]) + results[cid].size * j;
             j++;
         }
     }
 
     /* call inits */
-    for (i = 0; i < MULTITHREAD; i++)
+    if (results[cid].execs & ID_LIST)
     {
-        if (results[i].execs & ID_LIST)
-        {
-            results[i].list = core_list_init(
-                results[0].size, results[i].memblock[1], results[i].seed1);
-        }
-        if (results[i].execs & ID_MATRIX)
-        {
-            core_init_matrix(results[0].size,
-                             results[i].memblock[2],
-                             (ee_s32)results[i].seed1
-                                 | (((ee_s32)results[i].seed2) << 16),
-                             &(results[i].mat));
-        }
-        if (results[i].execs & ID_STATE)
-        {
-            core_init_state(
-                results[0].size, results[i].seed1, results[i].memblock[3]);
-        }
+        results[cid].list = core_list_init(
+            results[cid].size, results[cid].memblock[1], results[cid].seed1);
     }
-
+    if (results[cid].execs & ID_MATRIX)
+    {
+        core_init_matrix(results[cid].size,
+                         results[cid].memblock[2],
+                         (ee_s32)results[cid].seed1
+                             | (((ee_s32)results[cid].seed2) << 16),
+                         &(results[cid].mat));
+    }
+    if (results[cid].execs & ID_STATE)
+    {
+        core_init_state(
+            results[cid].size, results[cid].seed1, results[cid].memblock[3]);
+    }
 }
 
 //=========================================================================
@@ -241,38 +234,56 @@ main(int argc, char *argv[])
   int nthreads        = ncores_per_tile * NUM_BRG_TILES;
   int rv32_thread_id  = tile_id * ncores_per_tile + cid;
 
-  switch (tile_id) {
-    case 0:
-      // only core 0 does does the work
-      if (cid == 0) {
-        // cache invalidate
-        cache_invalidate();
+  // cache invalidate
+  cache_invalidate();
 
-        // compute
-        init_data(argc, argv);
+  // compute
+  init_data(rv32_thread_id, argc, argv);
 
-        // cache flush
-        cache_flush();
-      }
-      return BRG_STATUS_SUCCESS;
-    case 1:
-      // only core 0 does does the work
-      if (cid == 0) {
-        // cache invalidate
-        cache_invalidate();
+  // compute
+  iterate(&results[rv32_thread_id]);
 
-        // compute
-        iterate(&results[0]);
+  // cache flush
+  cache_flush();
 
-        // cache flush
-        cache_flush();
-      }
-      return BRG_STATUS_SUCCESS;
-    case 2:
-      return BRG_STATUS_SUCCESS;
-    default:
-      return BRG_STATUS_FAILURE;
-  }
+  //// Running on a single core
+  //switch (tile_id) {
+  //  case 0:
+  //    // only core 0 does does the work
+  //    if (cid == 0) {
+  //      // cache invalidate
+  //      cache_invalidate();
+
+  //      // compute
+  //      init_data(argc, argv);
+
+  //      // cache flush
+  //      cache_flush();
+  //    }
+  //    return BRG_STATUS_SUCCESS;
+  //  case 1:
+  //    // only core 0 does does the work
+  //    if (cid == 0) {
+  //      // cache invalidate
+  //      cache_invalidate();
+
+  //      // compute
+  //      iterate(&results[0]);
+
+  //      // cache flush
+  //      cache_flush();
+  //    }
+  //    return BRG_STATUS_SUCCESS;
+  //  case 2:
+  //    return BRG_STATUS_SUCCESS;
+  //  default:
+  //    return BRG_STATUS_FAILURE;
+  //}
+
+
+
+
+
 
 //    ee_u16       i, j = 0, num_algorithms = 0;
 //    ee_s16       known_id = -1, total_errors = 0;

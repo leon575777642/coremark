@@ -162,9 +162,9 @@ typedef uint64_t        ee_size_t;
         It is valid to have a different implementation of <core_start_parallel>
    and <core_end_parallel> in <core_portme.c>, to fit a particular architecture.
 */
-#ifndef MULTITHREAD
-#define MULTITHREAD 1
-#endif
+//#ifndef MULTITHREAD
+//#define MULTITHREAD 1
+//#endif
 
 /* Configuration: USE_PTHREAD
         Sample implementation for launching parallel contexts
